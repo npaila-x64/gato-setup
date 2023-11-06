@@ -1,0 +1,49 @@
+version: "3.9"
+services:
+  gato-db:
+    build:
+      context: .
+      dockerfile: build/Dockerfile.db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 1s
+      retries: 10
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - '5432:5432'
+    volumes: 
+      - gato-db:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/create_tables.sql
+    networks:
+      - gato-network
+
+  gato-server:
+    build:
+      context: .
+      dockerfile: build/Dockerfile
+    depends_on:
+      gato-db:
+        condition: service_healthy
+    environment:
+      DB_HOST: gato-db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: postgres
+    ports:
+      - "3000:3000"
+    networks:
+      - gato-network
+
+volumes:
+  gato-db:
+    driver: local
+
+networks:
+  gato-network:
+    name: chatbot_network
+    external: true
