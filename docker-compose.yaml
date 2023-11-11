@@ -1,49 +1,47 @@
-version: "3.9"
+version: "3.7"
 services:
-  gato-db:
-    build:
-      context: .
-      dockerfile: build/Dockerfile.db
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 2s
-      timeout: 1s
-      retries: 10
-    restart: always
+  app:
+      build:
+        args:
+          user: nico
+          uid: 1000
+        context: ./
+        dockerfile: Dockerfile
+      image: gato
+      container_name: gato-app
+      restart: unless-stopped
+      working_dir: /var/www/
+      volumes:
+        - ./:/var/www
+      networks:
+        - gato
+  db:
+    image: mysql:8.0
+    container_name: gato-db
+    restart: unless-stopped
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    ports:
-      - '5432:5432'
-    volumes: 
-      - gato-db:/var/lib/postgresql/data
-      - ./db/init.sql:/docker-entrypoint-initdb.d/create_tables.sql
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./docker-compose/mysql:/docker-entrypoint-initdb.d
     networks:
-      - gato-network
-
-  gato-server:
-    build:
-      context: .
-      dockerfile: build/Dockerfile
-    depends_on:
-      gato-db:
-        condition: service_healthy
-    environment:
-      DB_HOST: gato-db
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: postgres
+      - gato
+  nginx:
+    image: nginx:1.17-alpine
+    container_name: gato-nginx
+    restart: unless-stopped
     ports:
-      - "3000:3000"
+      - 8000:80
+    volumes:
+      - ./:/var/www
+      - ./docker-compose/nginx:/etc/nginx/conf.d
     networks:
-      - gato-network
-
-volumes:
-  gato-db:
-    driver: local
+      - gato
 
 networks:
-  gato-network:
-    name: chatbot_network
-    external: true
+  gato:
+    driver: bridge
