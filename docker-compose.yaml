@@ -1,13 +1,7 @@
 version: "3.7"
 services:
   app:
-      build:
-        args:
-          user: nico
-          uid: 1000
-        context: ./
-        dockerfile: Dockerfile
-      image: gato
+      image: npailax64/gato-app
       container_name: gato-app
       restart: unless-stopped
       working_dir: /var/www/
